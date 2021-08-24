@@ -73,7 +73,7 @@ pip3 install pip -U
 pip3 install numpy==1.21.2
 ```
 
-* [OpenCV 4.5.3 源码编译安装教程](https://blog.iyatt.com/%e5%bc%80%e5%8f%91/2021/07/19/dlib%e7%bc%96%e8%af%91%e5%ae%89%e8%a3%85/)
+* [OpenCV 4.5.3 源码编译安装教程](https://blog.iyatt.com/%e5%bc%80%e5%8f%91/2021/07/19/opencv%e7%bc%96%e8%af%91%e5%ae%89%e8%a3%85/)
 
 * [dlib 19.22 源码编译安装教程](https://blog.iyatt.com/%e5%bc%80%e5%8f%91/2021/07/19/dlib%e7%bc%96%e8%af%91%e5%ae%89%e8%a3%85/)
 
