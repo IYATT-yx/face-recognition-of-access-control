@@ -1,5 +1,8 @@
 该项目实现门禁系统的人脸识别，隶属于 2020年重庆理工大学科研立项项目 “人脸识别与指纹识别控制加密门锁微信小程序” KLB20079  
 
+Copyright (C) 2021 IYATT-yx  
+基于 [AGPL-3.0](LICENSE) 许可  
+
 # 运行环境
 
 * 树梅派 4B 4G （[官方64位系统20210507](https://downloads.raspberrypi.org/raspios_arm64/images/raspios_arm64-2021-05-28/)）
