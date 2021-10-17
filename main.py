@@ -1,69 +1,62 @@
 #!/usr/bin/env python3.8
 '''
 Filename: main.py
-brief: 人脸识别，检测到预存的人脸，通过 GPIO 发出信号
+brief: 人脸识别，检测到预存的人脸，通过串口发送信号
 
-Author: IYATT-yx
-Email: 2514374431@qq.com
 
-Copyright (C) 2021 IYATT-yx
-基于 AGPL-3.0 许可
+ * Copyright (C) 2021 IYATT-yx (Zhao Hongfei, 赵洪飞)，2514374431@qq.com
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import cv2 as cv
 from face_recognition import *
-import os
-import sys
+import os  
 import signal
 import pathlib
 import time
 import numpy as np
-
+import serial
 import RPi.GPIO as gpio
-gpio.setwarnings(False)
-gpio.setmode(gpio.BCM)
+import argparse
 
 
-stop = False  # 暂停工作
-factor = 0.5  # 人脸识别图像缩放（减小数据处理量）
+factor = 0.5  # 摄像头图像缩小比例
 filePath = os.path.dirname(os.path.abspath(__file__)) # 程序自身路径获取
+ser = serial.Serial('/dev/serial0', 9600)  # 串口: 端口，波特率
+
+
+def parseArgs():
+    """位置参数定义
+    """
+    paser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description='门禁人脸识别模块'
+    )
+    paser.add_argument('mode', help='选择模式： config: 首次运行录入人脸等配置操作，show用于调试运行识别，会出现摄像头预览框，normal：运行识别不显示预览框')
+    return paser.parse_args()
 
 
 def quitHandler(signum=None, frame=None):
     """程序退出处理
     """
-    print('\n已释放资源，执行退出！')
-
-    # 停止工作循环
-    global stop
-    stop = True
-
-    # 释放 GPIO
-    gpio.cleanup()
-    
-    # 关闭摄像头
+    print('\n退出程序！')
     cam.release()
-
+    ser.close()
     exit()
-
-
-def showMenu():
-    '''显示配置菜单
-    '''
-
-    print('配置菜单'.center(20, '-'))
-    print()
-    print('1 新增数据'.center(20, ' '))
-    print('2 清空数据'.center(20, ' '))
-    print('3 查看数据'.center(20, ' '))
-    print('4 删除数据'.center(20, ' '))
-    print('0 退出菜单'.center(20, ' '))
 
 
 def faceNamesWrite(faceNames):
     '''配置刷新
     预存人脸数据修改后更新到配置文件
     '''
-
     with open(filePath + '/faceNames.ini', 'w') as f: # 重写人名配置
         for faceName in faceNames:
             f.write(faceName + '\n')
@@ -78,7 +71,8 @@ def faceNamesWrite(faceNames):
     
 
 if __name__ == '__main__':
-
+    args = parseArgs()  # 位置参数获取
+    # 注册信号，用于退出程序
     signal.signal(signal.SIGINT, quitHandler) # Ctrl + C
     signal.signal(signal.SIGQUIT, quitHandler) # Ctrl + \
     signal.signal(signal.SIGTERM, quitHandler) # kill
@@ -88,8 +82,8 @@ if __name__ == '__main__':
         print('[Error] 摄像头打开失败！')
         quitHandler()
 
-    # 配置
-    if 'config' in sys.argv:
+    # 配置模式
+    if args.mode == 'config':
         if os.path.exists(filePath + '/faces') and pathlib.Path(filePath + '/faces').is_dir():  # 检测人脸库路径是否存在
             pass
         else:
@@ -100,7 +94,7 @@ if __name__ == '__main__':
         try:
             with open(filePath + '/faceNames.ini', 'r') as f:
                 for line in f:
-                    if line.count('\n') == len(line) or line.count(' ') == len(line) - line.count('\n'):  # 清除空行
+                    if line.count('\n') == len(line) or line.count(' ') == len(line) - line.count('\n'):  # 过滤空行
                         continue
                     faceNames.append(line.strip('\n'))
         except FileNotFoundError:
@@ -121,9 +115,16 @@ if __name__ == '__main__':
             faceNames.remove(removeList)
         faceNamePaths = [filePath + '/faces/' + faceName + '.jpg' for faceName in faceNames]
 
-        # 菜单循环
+        # 配置模式菜单交互
         while True:
-            showMenu()
+            print('配置菜单'.center(20, '-'))
+            print()
+            print('1 新增数据'.center(20, ' '))
+            print('2 清空数据'.center(20, ' '))
+            print('3 查看数据'.center(20, ' '))
+            print('4 删除数据'.center(20, ' '))
+            print('0 退出菜单'.center(20, ' '))
+
             choice = input('请输入您要进行的操作：')
             if choice == '1':
                 while True:
@@ -148,7 +149,7 @@ if __name__ == '__main__':
                         print('退出人脸录入！')
                         cv.destroyAllWindows()
                         break
-                    elif key == 32:  # Space
+                    elif key == 32:  # Space - 录入人脸
                         if not location:
                             print('未检测到人脸，请重新录入!')
                             continue
@@ -200,12 +201,13 @@ if __name__ == '__main__':
             else:
                 print('无效操作！！！')
         quitHandler()
-        exit()
 
     #############
     # 人脸识别工作
     #############
-
+    if args.mode == 'normal':  # 占位,实际输入任何参数内容都可
+        pass
+    print('开始运行...')
     # 加载储存的人脸
     knownFaceNames = list()
     try:
@@ -220,21 +222,16 @@ if __name__ == '__main__':
         exit()
     knownFaceEncodings = [face_encodings(load_image_file(filePath + '/faces/' + knownFaceName + '.jpg'))[0] for knownFaceName in knownFaceNames]
 
-    gpio.setup(17, gpio.OUT)
-    gpio.setup(18, gpio.OUT)
-    gpio.setup(19, gpio.OUT)
-    gpio.setup(20, gpio.IN, pull_up_down=gpio.PUD_UP)
-    gpio.setup(21, gpio.OUT, initial=gpio.LOW)
+    # GPIO 初始化 - 按钮
+    gpio.setmode(gpio.BCM)
+    gpio.setup(17, gpio.IN, pull_up_down=gpio.PUD_UP)
 
     counter  = 0
     lastState = False
     readCounter = 0
+    import time
     while True:
-        gpio.output(17, gpio.HIGH)
-        gpio.output(18, gpio.LOW)
-        gpio.output(19, gpio.LOW)
-        gpio.output(21, gpio.LOW)  # 开门信号控制，置为低电平
-
+        ser.write('running\n'.encode('utf-8'))
         ret, frame = cam.read()
 
         # 跳帧处理，缓解图像延时问题
@@ -243,28 +240,21 @@ if __name__ == '__main__':
             continue
         else:
             readCounter = 0
-        #######################
-            
-        small = cv.resize(frame, (0, 0), fx=factor, fy=factor)
-        rgbImg = small[:, :, ::-1]
 
+        small = cv.resize(frame, (0, 0), fx=factor, fy=factor)  # 减小数据处理量
+        rgbImg = small[:, :, ::-1]
         faceLocation = face_locations(rgbImg)
         faceEncodings = face_encodings(rgbImg, faceLocation)
-
         names = []
-        for faceEncoding in faceEncodings:  # 检测到人脸
-            gpio.output(17, gpio.LOW)
-            gpio.output(18, gpio.HIGH)
-            gpio.output(19, gpio.LOW)
 
+        for faceEncoding in faceEncodings:  # 检测到人脸
+            ser.write('find face\n'.encode('utf-8'))
             matches = compare_faces(knownFaceEncodings, faceEncoding)
             name  = 'unknow'
-
             faceDistance = face_distance(knownFaceEncodings, faceEncoding)
             bestMatchIndex = np.argmin(faceDistance)
             if matches[bestMatchIndex]:
                 name = knownFaceNames[bestMatchIndex]
-
             nowState = (name != 'unknow')
             if nowState and lastState:
                 counter += 1
@@ -273,26 +263,25 @@ if __name__ == '__main__':
             lastState = nowState
             names.append(name)
 
-        for (top, right, bottom, left), name in zip(faceLocation, names):
-            cv.rectangle(small, (left, top), (right, bottom), (0, 0, 255), 1)
-            cv.putText(small, name, (left + 6, bottom - 6), cv.FONT_HERSHEY_DUPLEX, 1.0, (255, 255, 255), 1)
-
-        if 'show' in sys.argv:
+        if args.mode == 'show':
+            for (top, right, bottom, left), name in zip(faceLocation, names):
+                cv.rectangle(small, (left, top), (right, bottom), (0, 0, 255), 1)
+                cv.putText(small, name, (left + 6, bottom - 6), cv.FONT_HERSHEY_DUPLEX, 1.0, (255, 255, 255), 1)
             cv.imshow('Recognition', small)
+        if cv.waitKey(1) == 27:
+            break
 
         if counter == 5:  # 识别到5次人脸
             counter = 0
 
-            gpio.output(17, gpio.LOW)
-            gpio.output(18, gpio.LOW)
-            gpio.output(19, gpio.HIGH)
+            ser.write('recognize face\n'.encode('utf-8'))
 
             quitCounter = 0
-            lastTouch = gpio.input(20)
+            lastTouch = gpio.input(17)
             while True:
-                nowTouch = gpio.input(20)
+                nowTouch = gpio.input(17)
                 if nowTouch != lastTouch:
-                    gpio.output(21, gpio.HIGH)
+                    ser.write('ON\n'.encode('utf-8'))
                     time.sleep(1)
                     lastTouch = nowTouch
                     break
@@ -302,6 +291,4 @@ if __name__ == '__main__':
                     if quitCounter == 20:
                         quitCounter = 0
                         break
-
-        if cv.waitKey(40) == 27:
-            break
+    quitHandler()
