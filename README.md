@@ -119,7 +119,7 @@ pip3 install RPi.GPIO==0.7.0
 
 ```bash
 # 无图形窗口
-./main.py
+./main.py normal
 ```
 
 GPIO 17 接触摸按钮  
