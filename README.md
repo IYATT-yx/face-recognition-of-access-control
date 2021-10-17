@@ -89,10 +89,17 @@ cd face_recognition
 sudo python3 setup.py install
 ```
 
-* RPi.GPIO 0.7.0
+* pyserial 3.5
+```bash
+pip3 install pyserial==3.5
+```
+
+* RPi.GPIO
 ```bash
 pip3 install RPi.GPIO==0.7.0
 ```
+
+[串口配置教程](https://blog.iyatt.com/%e5%bc%80%e5%8f%91/2021/10/16/%e6%a0%91%e8%8e%93%e6%b4%be4b%e4%b8%b2%e5%8f%a3%e9%80%9a%e4%bf%a1/)
 
 # 使用
 
@@ -115,10 +122,9 @@ pip3 install RPi.GPIO==0.7.0
 ./main.py
 ```
 
-GPIO接线按BCM方式，说明：
-
-17 人脸检测运行时高电平  
-18 检测到人脸时和17交替高低电平  
-19 识别到人脸，输出高电平，17和18低电平，20秒后改为低电平，17恢复高电平  
-20 触摸开关，当19处于高电平时，触摸会将19改为低电平，17恢复高电平  
-21 当19出现高电平且20收到触摸信号后，输出1秒高电平，之后恢复低电平，17变为高电平，用于确认发出信号  
+GPIO 17 接触摸按钮  
+串口：  
+运行中周期性发 `running\n`  
+检测到人脸发 `find face\n`  
+识别人脸发 `recognize face\n`  
+开锁信号发 `ON\n`
